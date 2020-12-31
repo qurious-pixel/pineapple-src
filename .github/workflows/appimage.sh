@@ -59,7 +59,6 @@ cp /opt/qt514/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins
 mkdir $HOME/squashfs-root/dist/
 cp /yuzu/dist/yuzu.ico $HOME/squashfs-root/dist/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
-tree $HOME/squashfs-root
 version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
@@ -71,11 +70,11 @@ mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/
 mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
 
-#mv yuzu-x86_64.AppImage* /yuzu/artifacts
+mv yuzu-x86_64.AppImage* /yuzu/artifacts
 
-#cp -R $HOME/artifacts/ /yuzu/
-#cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
-#chmod -R 777 /yuzu/artifacts
-#cd /yuzu/artifacts
-#ls -al /yuzu/artifacts/
-#ls -al /yuzu/artifacts/version
+cp -R $HOME/artifacts/ /yuzu/
+cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
+chmod -R 777 /yuzu/artifacts
+cd /yuzu/artifacts
+ls -al /yuzu/artifacts/
+ls -al /yuzu/artifacts/version

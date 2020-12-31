@@ -8,6 +8,11 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 # QT 5.14.2
 # source /opt/qt514/bin/qt514-env.sh
 QT_BASE_DIR=/opt/qt514
+
+ls /opt/qt514
+ls /opt/qt514/plugins
+ls /opt/qt514/plugins/platformthemes
+
 export QTDIR=$QT_BASE_DIR
 export PATH=$QT_BASE_DIR/bin:$PATH
 export LD_LIBRARY_PATH=$QT_BASE_DIR/lib/x86_64-linux-gnu:$QT_BASE_DIR/lib:$LD_LIBRARY_PATH

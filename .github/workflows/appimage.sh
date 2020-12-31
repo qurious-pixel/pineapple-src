@@ -9,7 +9,7 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 # source /opt/qt514/bin/qt514-env.sh
 QT_BASE_DIR=/opt/qt514
 
-touch 
+touch /yuzu/build/bin/yuzu
 
 export QTDIR=$QT_BASE_DIR
 export PATH=$QT_BASE_DIR/bin:$PATH

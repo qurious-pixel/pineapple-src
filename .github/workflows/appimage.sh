@@ -10,7 +10,10 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 QT_BASE_DIR=/opt/qt514
 
 mkdir -p /yuzu/build/bin/
-touch /yuzu/build/bin/yuzu
+ls /yuzu/build/
+ls /yuzu/build/bin/
+echo "there is some text" > /yuzu/build/bin/yuzu
+ls /yuzu/build/bin/
 
 export QTDIR=$QT_BASE_DIR
 export PATH=$QT_BASE_DIR/bin:$PATH

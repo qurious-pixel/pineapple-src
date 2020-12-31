@@ -9,9 +9,7 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 # source /opt/qt514/bin/qt514-env.sh
 QT_BASE_DIR=/opt/qt514
 
-ls /opt/qt514
-ls /opt/qt514/plugins
-ls /opt/qt514/plugins/platformthemes
+touch 
 
 export QTDIR=$QT_BASE_DIR
 export PATH=$QT_BASE_DIR/bin:$PATH
@@ -54,7 +52,12 @@ chmod a+x ./squashfs-root/AppRun
 # /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -appimage -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
+mkdir $HOME/squashfs-root/usr/plugins/platformthemes/
+cp /opt/qt514/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins/platformthemes/
+mkdir $HOME/squashfs-root/dist/
+cp /yuzu/dist/yuzu.ico $HOME/squashfs-root/dist/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
+tree $HOME/squashfs-root
 version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
@@ -66,11 +69,11 @@ mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/
 mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
 
-mv yuzu-x86_64.AppImage* /yuzu/artifacts
+#mv yuzu-x86_64.AppImage* /yuzu/artifacts
 
-cp -R $HOME/artifacts/ /yuzu/
-cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
-chmod -R 777 /yuzu/artifacts
-cd /yuzu/artifacts
-ls -al /yuzu/artifacts/
-ls -al /yuzu/artifacts/version
+#cp -R $HOME/artifacts/ /yuzu/
+#cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
+#chmod -R 777 /yuzu/artifacts
+#cd /yuzu/artifacts
+#ls -al /yuzu/artifacts/
+#ls -al /yuzu/artifacts/version

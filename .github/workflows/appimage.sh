@@ -37,7 +37,7 @@ chmod a+x ./squashfs-root/update.sh
 #cp /tmp/libssl.so.47 /tmp/libcrypto.so.45 /usr/lib/x86_64-linux-gnu/
 
 version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
-echo $version > $HOME/squashfs-root/version.txt
+echo EA-$version > $HOME/squashfs-root/version.txt
 
 unset QT_PLUGIN_PATH
 unset LD_LIBRARY_PATH

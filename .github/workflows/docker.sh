@@ -5,6 +5,7 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 ver=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17)
 title="yuzu Early Access $ver"
 
+ln -s /home/yuzu/.conan /root
 
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
@@ -13,6 +14,7 @@ find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror$/-W/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*)$/ )/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*$/ /g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/-Werror/-W/g' {} +
+
 mkdir build && cd build 
 
 cmake ..                                    \

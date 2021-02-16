@@ -13,10 +13,22 @@ find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror$/-W/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*)$/ )/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*$/ /g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/-Werror/-W/g' {} +
-
 mkdir build && cd build 
 
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++ -DENABLE_QT_TRANSLATION=ON -DTITLE_BAR_FORMAT_IDLE="$title" -DTITLE_BAR_FORMAT_RUNNING="$title | {3}" -DENABLE_COMPATIBILITY_LIST_DOWNLOAD=ON -DGIT_BRANCH="HEAD" -DGIT_DESC="$msvc" -DUSE_DISCORD_PRESENCE=ON
+cmake ..                                    \
+  -DCMAKE_BUILD_TYPE=Release                \
+  -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc    \
+  -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++  \
+  -DTITLE_BAR_FORMAT_IDLE="$title"          \
+  -DTITLE_BAR_FORMAT_RUNNING="$title | {3}" \
+  -DENABLE_COMPATIBILITY_LIST_DOWNLOAD=ON   \
+  -DGIT_BRANCH="HEAD"                       \
+  -DGIT_DESC="$msvc"                        \
+  -DUSE_DISCORD_PRESENCE=ON                 \
+  -DENABLE_QT_TRANSLATION=ON                \
+  -DBUILD_DATE="$build_date"                \
+  -DYUZU_USE_QT_WEB_ENGINE=OFF              \
+  -G Ninja 
 
 ninja
 

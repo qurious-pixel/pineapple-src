@@ -19,10 +19,7 @@ find . -name "CMakeLists.txt" -exec sed -i 's/-Werror/-W/g' {} +
 
 mkdir build && cd build 
 
-ls /usr/bin | grep realpath
-realpath .
-
-#cmake ..                                    \
+cmake ..                                    \
   -DCMAKE_BUILD_TYPE=Release                \
   -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc    \
   -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++  \

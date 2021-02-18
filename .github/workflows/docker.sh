@@ -10,6 +10,8 @@ ln -s /home/yuzu/.conan /root
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 
+build_date=$(date +%F -r .)
+
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror$/-W/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*)$/ )/g' {} +
 find . -name "CMakeLists.txt" -exec sed -i 's/^.*-Werror=.*$/ /g' {} +

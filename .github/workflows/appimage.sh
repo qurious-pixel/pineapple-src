@@ -55,6 +55,7 @@ export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
 	cp /opt/qt514/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins/platformthemes/
 	mkdir $HOME/squashfs-root/dist/
 	cp /yuzu/dist/yuzu.ico $HOME/squashfs-root/dist/
+	cp /usr/bin/realpath $HOME/squashfs-root/usr/bin/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 

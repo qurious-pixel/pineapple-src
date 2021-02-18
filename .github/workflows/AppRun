@@ -7,10 +7,19 @@ mkdir -p $HOME/.local/share/icons/hicolor/scalable/apps && cp $APPDIR/yuzu.svg $
 GITVER=`wget -qO- https://api.github.com/repos/pineappleEA/pineapple-src/releases/latest | grep "releases/tag" | grep -o 'EA-[[:digit:]]*'`
 APPVER=`cat $APPDIR/version.txt`
 
+GAME="$*"
+if [[ -d ${GAME%/*} ]] ; then
+	export GAMEPATH="$( cd "${GAME%/*}" && pwd )"/"${GAME##*/}"
+else
+	export GAMEPATH="$($APPDIR/usr/bin/realpath ${GAME##*/})"
+fi
+
+echo "GAMEPATH '${GAMEPATH}'"
+
 if [[ -z "$GITVER" ]]; then
-	$APPDIR/usr/bin/yuzu
+	$APPDIR/usr/bin/yuzu "${GAMEPATH}"
 elif [ "$GITVER" = "$APPVER" ]; then
-	$APPDIR/usr/bin/yuzu
+	$APPDIR/usr/bin/yuzu "${GAMEPATH}"
 else
 	$APPDIR/update.sh
 fi

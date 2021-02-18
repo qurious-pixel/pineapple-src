@@ -2,7 +2,7 @@ name: AppImage
 
 on:
   push:
-    branches: [ main ]
+    branches: [ launch ]
   
 jobs:
   appimage:
@@ -42,5 +42,5 @@ jobs:
             ghr_v0.13.0_linux_amd64/ghr -replace -n "EA-$version" -b "early-access version $version" EA-$version artifacts/version/
     
         env:
-          DEFAULT_BRANCH: main
+          DEFAULT_BRANCH: launch
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

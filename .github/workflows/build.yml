@@ -35,5 +35,5 @@ jobs:
             ghr_v0.13.0_linux_amd64/ghr -recreate -n "EA-$version" -b "GitHub https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" EA-$version artifacts/version/
     
         env:
-          DEFAULT_BRANCH: main
+          DEFAULT_BRANCH: launch
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

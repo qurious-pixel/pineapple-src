@@ -213,7 +213,6 @@ std::array<VkDescriptorUpdateTemplateEntryKHR, 8> BuildASTCPassDescriptorUpdateT
 }
 
 struct AstcPushConstants {
-    std::array<u32, 2> num_image_blocks;
     std::array<u32, 2> blocks_dims;
     u32 bytes_per_block_log2;
     u32 layer_stride;
@@ -424,7 +423,7 @@ ASTCDecoderPass::ASTCDecoderPass(const Device& device_, VKScheduler& scheduler_,
 ASTCDecoderPass::~ASTCDecoderPass() = default;
 
 void ASTCDecoderPass::MakeDataBuffer() {
-    constexpr auto TOTAL_BUFFER_SIZE = sizeof(ASTC_BUFFER_DATA) + sizeof(SWIZZLE_TABLE);
+    constexpr size_t TOTAL_BUFFER_SIZE = sizeof(ASTC_BUFFER_DATA) + sizeof(SWIZZLE_TABLE);
     data_buffer = device.GetLogical().CreateBuffer(VkBufferCreateInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
@@ -458,56 +457,56 @@ void ASTCDecoderPass::MakeDataBuffer() {
                 .pNext = nullptr,
                 .srcAccessMask = 0,
                 .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-            },
-            {}, {});
+            });
     });
 }
 
 void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
                                std::span<const VideoCommon::SwizzleParameters> swizzles) {
     using namespace VideoCommon::Accelerated;
-    const VideoCommon::Extent2D tile_size{
-        .width = VideoCore::Surface::DefaultBlockWidth(image.info.format),
-        .height = VideoCore::Surface::DefaultBlockHeight(image.info.format),
+    const std::array<u32, 2> block_dims{
+        VideoCore::Surface::DefaultBlockWidth(image.info.format),
+        VideoCore::Surface::DefaultBlockHeight(image.info.format),
     };
     scheduler.RequestOutsideRenderPassOperationContext();
     if (!data_buffer) {
         MakeDataBuffer();
     }
+    const VkPipeline vk_pipeline = *pipeline;
     const VkImageAspectFlags aspect_mask = image.AspectMask();
     const VkImage vk_image = image.Handle();
     const bool is_initialized = image.ExchangeInitialization();
-    scheduler.Record([vk_image, aspect_mask, is_initialized](vk::CommandBuffer cmdbuf) {
-        const VkImageMemoryBarrier image_barrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = nullptr,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-            .oldLayout = is_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = vk_image,
-            .subresourceRange{
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-        };
-        cmdbuf.PipelineBarrier(0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
-    });
-    const std::array<u32, 2> block_dims{tile_size.width, tile_size.height};
+    scheduler.Record(
+        [vk_pipeline, vk_image, aspect_mask, is_initialized](vk::CommandBuffer cmdbuf) {
+            const VkImageMemoryBarrier image_barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                .oldLayout = is_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = vk_image,
+                .subresourceRange{
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                },
+            };
+            cmdbuf.PipelineBarrier(is_initialized ? VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : 0,
+                                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
+            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline);
+        });
     for (const VideoCommon::SwizzleParameters& swizzle : swizzles) {
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);
         const u32 num_dispatches_y = Common::DivCeil(swizzle.num_tiles.height, 32U);
         const u32 num_dispatches_z = image.info.resources.layers;
-        const std::array num_image_blocks{swizzle.num_tiles.width, swizzle.num_tiles.height};
 
         update_descriptor_queue.Acquire();
-
         update_descriptor_queue.AddBuffer(map.buffer, input_offset,
                                           image.guest_size_bytes - swizzle.buffer_offset);
         update_descriptor_queue.AddBuffer(*data_buffer, offsetof(AstcBufferData, encoding_values),
@@ -527,17 +526,14 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
 
         const VkDescriptorSet set = CommitDescriptorSet(update_descriptor_queue);
         const VkPipelineLayout vk_layout = *layout;
-        const VkPipeline vk_pipeline = *pipeline;
+
         // To unswizzle the ASTC data
         const auto params = MakeBlockLinearSwizzle2DParams(swizzle, image.info);
         ASSERT(params.origin == (std::array<u32, 3>{0, 0, 0}));
         ASSERT(params.destination == (std::array<s32, 3>{0, 0, 0}));
-
-        scheduler.Record([vk_layout, vk_pipeline, num_dispatches_x, num_dispatches_y,
-                          num_dispatches_z, num_image_blocks, block_dims, params,
-                          set](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([vk_layout, num_dispatches_x, num_dispatches_y, num_dispatches_z,
+                          block_dims, params, set](vk::CommandBuffer cmdbuf) {
             const AstcPushConstants uniforms{
-                .num_image_blocks = num_image_blocks,
                 .blocks_dims = block_dims,
                 .bytes_per_block_log2 = params.bytes_per_block_log2,
                 .layer_stride = params.layer_stride,
@@ -546,7 +542,6 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
                 .block_height = params.block_height,
                 .block_height_mask = params.block_height_mask,
             };
-            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline);
             cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, vk_layout, 0, set, {});
             cmdbuf.PushConstants(vk_layout, VK_SHADER_STAGE_COMPUTE_BIT, uniforms);
             cmdbuf.Dispatch(num_dispatches_x, num_dispatches_y, num_dispatches_z);
@@ -571,7 +566,8 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         };
-        cmdbuf.PipelineBarrier(0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
+        cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                               VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, image_barrier);
     });
 }
 

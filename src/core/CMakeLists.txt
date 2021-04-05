@@ -141,6 +141,9 @@ add_library(core STATIC
     hardware_interrupt_manager.h
     hle/ipc.h
     hle/ipc_helpers.h
+    hle/kernel/board/nintendo/nx/k_system_control.cpp
+    hle/kernel/board/nintendo/nx/k_system_control.h
+    hle/kernel/board/nintendo/nx/secure_monitor.h
     hle/kernel/client_port.cpp
     hle/kernel/client_port.h
     hle/kernel/client_session.cpp
@@ -156,6 +159,8 @@ add_library(core STATIC
     hle/kernel/hle_ipc.h
     hle/kernel/k_address_arbiter.cpp
     hle/kernel/k_address_arbiter.h
+    hle/kernel/k_address_space_info.cpp
+    hle/kernel/k_address_space_info.h
     hle/kernel/k_affinity_mask.h
     hle/kernel/k_condition_variable.cpp
     hle/kernel/k_condition_variable.h
@@ -164,6 +169,22 @@ add_library(core STATIC
     hle/kernel/k_light_condition_variable.h
     hle/kernel/k_light_lock.cpp
     hle/kernel/k_light_lock.h
+    hle/kernel/k_memory_block.h
+    hle/kernel/k_memory_block_manager.cpp
+    hle/kernel/k_memory_block_manager.h
+    hle/kernel/k_memory_layout.cpp
+    hle/kernel/k_memory_layout.board.nintendo_nx.cpp
+    hle/kernel/k_memory_layout.h
+    hle/kernel/k_memory_manager.cpp
+    hle/kernel/k_memory_manager.h
+    hle/kernel/k_memory_region.h
+    hle/kernel/k_memory_region_type.h
+    hle/kernel/k_page_bitmap.h
+    hle/kernel/k_page_heap.cpp
+    hle/kernel/k_page_heap.h
+    hle/kernel/k_page_linked_list.h
+    hle/kernel/k_page_table.cpp
+    hle/kernel/k_page_table.h
     hle/kernel/k_priority_queue.h
     hle/kernel/k_readable_event.cpp
     hle/kernel/k_readable_event.h
@@ -175,32 +196,23 @@ add_library(core STATIC
     hle/kernel/k_scoped_lock.h
     hle/kernel/k_scoped_resource_reservation.h
     hle/kernel/k_scoped_scheduler_lock_and_sleep.h
+    hle/kernel/k_shared_memory.cpp
+    hle/kernel/k_shared_memory.h
+    hle/kernel/k_slab_heap.h
+    hle/kernel/k_spin_lock.cpp
+    hle/kernel/k_spin_lock.h
     hle/kernel/k_synchronization_object.cpp
     hle/kernel/k_synchronization_object.h
+    hle/kernel/k_system_control.h
     hle/kernel/k_thread.cpp
     hle/kernel/k_thread.h
     hle/kernel/k_thread_queue.h
+    hle/kernel/k_trace.h
     hle/kernel/k_writable_event.cpp
     hle/kernel/k_writable_event.h
     hle/kernel/kernel.cpp
     hle/kernel/kernel.h
-    hle/kernel/memory/address_space_info.cpp
-    hle/kernel/memory/address_space_info.h
-    hle/kernel/memory/memory_block.h
-    hle/kernel/memory/memory_block_manager.cpp
-    hle/kernel/memory/memory_block_manager.h
-    hle/kernel/memory/memory_layout.h
-    hle/kernel/memory/memory_manager.cpp
-    hle/kernel/memory/memory_manager.h
-    hle/kernel/memory/memory_types.h
-    hle/kernel/memory/page_linked_list.h
-    hle/kernel/memory/page_heap.cpp
-    hle/kernel/memory/page_heap.h
-    hle/kernel/memory/page_table.cpp
-    hle/kernel/memory/page_table.h
-    hle/kernel/memory/slab_heap.h
-    hle/kernel/memory/system_control.cpp
-    hle/kernel/memory/system_control.h
+    hle/kernel/memory_types.h
     hle/kernel/object.cpp
     hle/kernel/object.h
     hle/kernel/physical_core.cpp
@@ -218,8 +230,6 @@ add_library(core STATIC
     hle/kernel/service_thread.h
     hle/kernel/session.cpp
     hle/kernel/session.h
-    hle/kernel/shared_memory.cpp
-    hle/kernel/shared_memory.h
     hle/kernel/svc.cpp
     hle/kernel/svc.h
     hle/kernel/svc_common.h
@@ -261,6 +271,7 @@ add_library(core STATIC
     hle/service/am/applets/general_backend.h
     hle/service/am/applets/profile_select.cpp
     hle/service/am/applets/profile_select.h
+    hle/service/am/applets/software_keyboard_types.h
     hle/service/am/applets/software_keyboard.cpp
     hle/service/am/applets/software_keyboard.h
     hle/service/am/applets/web_browser.cpp

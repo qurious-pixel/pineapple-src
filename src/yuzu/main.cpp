@@ -60,6 +60,7 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 #include <QPushButton>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QString>
 #include <QSysInfo>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrent>
@@ -100,6 +101,7 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 #include "core/settings.h"
 #include "core/telemetry_session.h"
 #include "input_common/main.h"
+#include "util/overlay_dialog.h"
 #include "video_core/gpu.h"
 #include "video_core/shader_notify.h"
 #include "yuzu/about_dialog.h"
@@ -224,6 +226,8 @@ GMainWindow::GMainWindow()
     SetDiscordEnabled(UISettings::values.enable_discord_presence);
     discord_rpc->Update();
 
+    RegisterMetaTypes();
+
     InitializeWidgets();
     InitializeDebugWidgets();
     InitializeRecentFileMenuActions();
@@ -319,6 +323,34 @@ GMainWindow::GMainWindow()
             continue;
         }
 
+        // Launch game with a specific user
+        if (args[i] == QStringLiteral("-u")) {
+            if (i >= args.size() - 1) {
+                continue;
+            }
+
+            if (args[i + 1].startsWith(QChar::fromLatin1('-'))) {
+                continue;
+            }
+
+            bool argument_ok;
+            const std::size_t selected_user = args[++i].toUInt(&argument_ok);
+
+            if (!argument_ok) {
+                LOG_ERROR(Frontend, "Invalid user argument");
+                continue;
+            }
+
+            const Service::Account::ProfileManager manager;
+            if (!manager.UserExistsIndex(selected_user)) {
+                LOG_ERROR(Frontend, "Selected user doesn't exist");
+                continue;
+            }
+
+            Settings::values.current_user = selected_user;
+            continue;
+        }
+
         // Launch game at path
         if (args[i] == QStringLiteral("-g")) {
             if (i >= args.size() - 1) {
@@ -342,6 +374,55 @@ GMainWindow::~GMainWindow() {
     // will get automatically deleted otherwise
     if (render_window->parent() == nullptr)
         delete render_window;
+}
+
+void GMainWindow::RegisterMetaTypes() {
+    // Register integral and floating point types
+    qRegisterMetaType<u8>("u8");
+    qRegisterMetaType<u16>("u16");
+    qRegisterMetaType<u32>("u32");
+    qRegisterMetaType<u64>("u64");
+    qRegisterMetaType<u128>("u128");
+    qRegisterMetaType<s8>("s8");
+    qRegisterMetaType<s16>("s16");
+    qRegisterMetaType<s32>("s32");
+    qRegisterMetaType<s64>("s64");
+    qRegisterMetaType<f32>("f32");
+    qRegisterMetaType<f64>("f64");
+
+    // Register string types
+    qRegisterMetaType<std::string>("std::string");
+    qRegisterMetaType<std::wstring>("std::wstring");
+    qRegisterMetaType<std::u8string>("std::u8string");
+    qRegisterMetaType<std::u16string>("std::u16string");
+    qRegisterMetaType<std::u32string>("std::u32string");
+    qRegisterMetaType<std::string_view>("std::string_view");
+    qRegisterMetaType<std::wstring_view>("std::wstring_view");
+    qRegisterMetaType<std::u8string_view>("std::u8string_view");
+    qRegisterMetaType<std::u16string_view>("std::u16string_view");
+    qRegisterMetaType<std::u32string_view>("std::u32string_view");
+
+    // Register applet types
+
+    // Controller Applet
+    qRegisterMetaType<Core::Frontend::ControllerParameters>("Core::Frontend::ControllerParameters");
+
+    // Software Keyboard Applet
+    qRegisterMetaType<Core::Frontend::KeyboardInitializeParameters>(
+        "Core::Frontend::KeyboardInitializeParameters");
+    qRegisterMetaType<Core::Frontend::InlineAppearParameters>(
+        "Core::Frontend::InlineAppearParameters");
+    qRegisterMetaType<Core::Frontend::InlineTextParameters>("Core::Frontend::InlineTextParameters");
+    qRegisterMetaType<Service::AM::Applets::SwkbdResult>("Service::AM::Applets::SwkbdResult");
+    qRegisterMetaType<Service::AM::Applets::SwkbdTextCheckResult>(
+        "Service::AM::Applets::SwkbdTextCheckResult");
+    qRegisterMetaType<Service::AM::Applets::SwkbdReplyType>("Service::AM::Applets::SwkbdReplyType");
+
+    // Web Browser Applet
+    qRegisterMetaType<Service::AM::Applets::WebExitReason>("Service::AM::Applets::WebExitReason");
+
+    // Register loader types
+    qRegisterMetaType<Core::System::ResultStatus>("Core::System::ResultStatus");
 }
 
 void GMainWindow::ControllerSelectorReconfigureControllers(
@@ -383,25 +464,112 @@ void GMainWindow::ProfileSelectorSelectProfile() {
     emit ProfileSelectorFinishedSelection(uuid);
 }
 
-void GMainWindow::SoftwareKeyboardGetText(
-    const Core::Frontend::SoftwareKeyboardParameters& parameters) {
-    QtSoftwareKeyboardDialog dialog(this, parameters);
-    dialog.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowStaysOnTopHint |
-                          Qt::WindowTitleHint | Qt::WindowSystemMenuHint |
-                          Qt::WindowCloseButtonHint);
-    dialog.setWindowModality(Qt::WindowModal);
-
-    if (dialog.exec() == QDialog::Rejected) {
-        emit SoftwareKeyboardFinishedText(std::nullopt);
+void GMainWindow::SoftwareKeyboardInitialize(
+    bool is_inline, Core::Frontend::KeyboardInitializeParameters initialize_parameters) {
+    if (software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is already initialized!");
         return;
     }
 
-    emit SoftwareKeyboardFinishedText(dialog.GetText());
+    software_keyboard = new QtSoftwareKeyboardDialog(render_window, Core::System::GetInstance(),
+                                                     is_inline, std::move(initialize_parameters));
+
+    if (is_inline) {
+        connect(
+            software_keyboard, &QtSoftwareKeyboardDialog::SubmitInlineText, this,
+            [this](Service::AM::Applets::SwkbdReplyType reply_type, std::u16string submitted_text,
+                   s32 cursor_position) {
+                emit SoftwareKeyboardSubmitInlineText(reply_type, submitted_text, cursor_position);
+            },
+            Qt::QueuedConnection);
+    } else {
+        connect(
+            software_keyboard, &QtSoftwareKeyboardDialog::SubmitNormalText, this,
+            [this](Service::AM::Applets::SwkbdResult result, std::u16string submitted_text) {
+                emit SoftwareKeyboardSubmitNormalText(result, submitted_text);
+            },
+            Qt::QueuedConnection);
+    }
 }
 
-void GMainWindow::SoftwareKeyboardInvokeCheckDialog(std::u16string error_message) {
-    QMessageBox::warning(this, tr("Text Check Failed"), QString::fromStdU16String(error_message));
-    emit SoftwareKeyboardFinishedCheckDialog();
+void GMainWindow::SoftwareKeyboardShowNormal() {
+    if (!software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is not initialized!");
+        return;
+    }
+
+    const auto& layout = render_window->GetFramebufferLayout();
+
+    const auto x = layout.screen.left;
+    const auto y = layout.screen.top;
+    const auto w = layout.screen.GetWidth();
+    const auto h = layout.screen.GetHeight();
+
+    software_keyboard->ShowNormalKeyboard(render_window->mapToGlobal(QPoint(x, y)), QSize(w, h));
+}
+
+void GMainWindow::SoftwareKeyboardShowTextCheck(
+    Service::AM::Applets::SwkbdTextCheckResult text_check_result,
+    std::u16string text_check_message) {
+    if (!software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is not initialized!");
+        return;
+    }
+
+    software_keyboard->ShowTextCheckDialog(text_check_result, text_check_message);
+}
+
+void GMainWindow::SoftwareKeyboardShowInline(
+    Core::Frontend::InlineAppearParameters appear_parameters) {
+    if (!software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is not initialized!");
+        return;
+    }
+
+    const auto& layout = render_window->GetFramebufferLayout();
+
+    const auto x =
+        static_cast<int>(layout.screen.left + (0.5f * layout.screen.GetWidth() *
+                                               ((2.0f * appear_parameters.key_top_translate_x) +
+                                                (1.0f - appear_parameters.key_top_scale_x))));
+    const auto y =
+        static_cast<int>(layout.screen.top + (layout.screen.GetHeight() *
+                                              ((2.0f * appear_parameters.key_top_translate_y) +
+                                               (1.0f - appear_parameters.key_top_scale_y))));
+    const auto w = static_cast<int>(layout.screen.GetWidth() * appear_parameters.key_top_scale_x);
+    const auto h = static_cast<int>(layout.screen.GetHeight() * appear_parameters.key_top_scale_y);
+
+    software_keyboard->ShowInlineKeyboard(std::move(appear_parameters),
+                                          render_window->mapToGlobal(QPoint(x, y)), QSize(w, h));
+}
+
+void GMainWindow::SoftwareKeyboardHideInline() {
+    if (!software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is not initialized!");
+        return;
+    }
+
+    software_keyboard->HideInlineKeyboard();
+}
+
+void GMainWindow::SoftwareKeyboardInlineTextChanged(
+    Core::Frontend::InlineTextParameters text_parameters) {
+    if (!software_keyboard) {
+        LOG_ERROR(Frontend, "The software keyboard is not initialized!");
+        return;
+    }
+
+    software_keyboard->InlineTextChanged(std::move(text_parameters));
+}
+
+void GMainWindow::SoftwareKeyboardExit() {
+    if (!software_keyboard) {
+        return;
+    }
+
+    software_keyboard->ExitKeyboard();
+
+    software_keyboard = nullptr;
 }
 
 void GMainWindow::WebBrowserOpenWebPage(std::string_view main_url, std::string_view additional_args,
@@ -854,8 +1022,7 @@ void GMainWindow::InitializeHotkeys() {
     connect(hotkey_registry.GetHotkey(main_window, QStringLiteral("Toggle Mouse Panning"), this),
             &QShortcut::activated, this, [&] {
                 Settings::values.mouse_panning = !Settings::values.mouse_panning;
-                if (UISettings::values.hide_mouse || Settings::values.mouse_panning) {
-                    mouse_hide_timer.start();
+                if (Settings::values.mouse_panning) {
                     render_window->installEventFilter(render_window);
                     render_window->setAttribute(Qt::WA_Hover, true);
                 }
@@ -947,6 +1114,10 @@ void GMainWindow::ConnectWidgetEvents() {
             &GRenderWindow::OnEmulationStarting);
     connect(this, &GMainWindow::EmulationStopping, render_window,
             &GRenderWindow::OnEmulationStopping);
+
+    // Software Keyboard Applet
+    connect(this, &GMainWindow::EmulationStarting, this, &GMainWindow::SoftwareKeyboardExit);
+    connect(this, &GMainWindow::EmulationStopping, this, &GMainWindow::SoftwareKeyboardExit);
 
     connect(&status_bar_update_timer, &QTimer::timeout, this, &GMainWindow::UpdateStatusBar);
 }
@@ -1208,9 +1379,12 @@ void GMainWindow::BootGame(const QString& filename, std::size_t program_index) {
     renderer_status_button->setDisabled(true);
 
     if (UISettings::values.hide_mouse || Settings::values.mouse_panning) {
-        mouse_hide_timer.start();
         render_window->installEventFilter(render_window);
         render_window->setAttribute(Qt::WA_Hover, true);
+    }
+
+    if (UISettings::values.hide_mouse) {
+        mouse_hide_timer.start();
     }
 
     std::string title_name;
@@ -2154,15 +2328,6 @@ void GMainWindow::OnStartGame() {
 
     emu_thread->SetRunning(true);
 
-    qRegisterMetaType<Core::Frontend::ControllerParameters>("Core::Frontend::ControllerParameters");
-    qRegisterMetaType<Core::Frontend::SoftwareKeyboardParameters>(
-        "Core::Frontend::SoftwareKeyboardParameters");
-    qRegisterMetaType<Core::System::ResultStatus>("Core::System::ResultStatus");
-    qRegisterMetaType<std::string>("std::string");
-    qRegisterMetaType<std::optional<std::u16string>>("std::optional<std::u16string>");
-    qRegisterMetaType<std::string_view>("std::string_view");
-    qRegisterMetaType<Service::AM::Applets::WebExitReason>("Service::AM::Applets::WebExitReason");
-
     connect(emu_thread.get(), &EmuThread::ErrorThrown, this, &GMainWindow::OnCoreError);
 
     ui.action_Start->setEnabled(false);
@@ -2211,8 +2376,11 @@ void GMainWindow::OnExecuteProgram(std::size_t program_index) {
     BootGame(last_filename_booted, program_index);
 }
 
-void GMainWindow::ErrorDisplayDisplayError(QString body) {
-    QMessageBox::critical(this, tr("Error Display"), body);
+void GMainWindow::ErrorDisplayDisplayError(QString error_code, QString error_text) {
+    OverlayDialog dialog(render_window, Core::System::GetInstance(), error_code, error_text,
+                         QString{}, tr("OK"), Qt::AlignLeft | Qt::AlignVCenter);
+    dialog.exec();
+
     emit ErrorDisplayFinished();
 }
 
@@ -2264,24 +2432,66 @@ void GMainWindow::ToggleFullscreen() {
 void GMainWindow::ShowFullscreen() {
     if (ui.action_Single_Window_Mode->isChecked()) {
         UISettings::values.geometry = saveGeometry();
+
         ui.menubar->hide();
         statusBar()->hide();
-        showFullScreen();
+
+        if (Settings::values.fullscreen_mode.GetValue() == 1) {
+            showFullScreen();
+            return;
+        }
+
+        hide();
+        setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
+        const auto screen_geometry = QApplication::desktop()->screenGeometry(this);
+        setGeometry(screen_geometry.x(), screen_geometry.y(), screen_geometry.width(),
+                    screen_geometry.height() + 1);
+        raise();
+        showNormal();
     } else {
         UISettings::values.renderwindow_geometry = render_window->saveGeometry();
-        render_window->showFullScreen();
+
+        if (Settings::values.fullscreen_mode.GetValue() == 1) {
+            render_window->showFullScreen();
+            return;
+        }
+
+        render_window->hide();
+        render_window->setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
+        const auto screen_geometry = QApplication::desktop()->screenGeometry(this);
+        render_window->setGeometry(screen_geometry.x(), screen_geometry.y(),
+                                   screen_geometry.width(), screen_geometry.height() + 1);
+        render_window->raise();
+        render_window->showNormal();
     }
 }
 
 void GMainWindow::HideFullscreen() {
     if (ui.action_Single_Window_Mode->isChecked()) {
+        if (Settings::values.fullscreen_mode.GetValue() == 1) {
+            showNormal();
+            restoreGeometry(UISettings::values.geometry);
+        } else {
+            hide();
+            setWindowFlags(windowFlags() & ~Qt::FramelessWindowHint);
+            restoreGeometry(UISettings::values.geometry);
+            raise();
+            show();
+        }
+
         statusBar()->setVisible(ui.action_Show_Status_Bar->isChecked());
         ui.menubar->show();
-        showNormal();
-        restoreGeometry(UISettings::values.geometry);
     } else {
-        render_window->showNormal();
-        render_window->restoreGeometry(UISettings::values.renderwindow_geometry);
+        if (Settings::values.fullscreen_mode.GetValue() == 1) {
+            render_window->showNormal();
+            render_window->restoreGeometry(UISettings::values.renderwindow_geometry);
+        } else {
+            render_window->hide();
+            render_window->setWindowFlags(windowFlags() & ~Qt::FramelessWindowHint);
+            render_window->restoreGeometry(UISettings::values.renderwindow_geometry);
+            render_window->raise();
+            render_window->show();
+        }
     }
 }
 
@@ -2372,10 +2582,13 @@ void GMainWindow::OnConfigure() {
     if ((UISettings::values.hide_mouse || Settings::values.mouse_panning) && emulation_running) {
         render_window->installEventFilter(render_window);
         render_window->setAttribute(Qt::WA_Hover, true);
-        mouse_hide_timer.start();
     } else {
         render_window->removeEventFilter(render_window);
         render_window->setAttribute(Qt::WA_Hover, false);
+    }
+
+    if (UISettings::values.hide_mouse) {
+        mouse_hide_timer.start();
     }
 
     UpdateStatusButtons();
@@ -2615,8 +2828,7 @@ void GMainWindow::UpdateUISettings() {
 }
 
 void GMainWindow::HideMouseCursor() {
-    if (emu_thread == nullptr ||
-        (!UISettings::values.hide_mouse && !Settings::values.mouse_panning)) {
+    if (emu_thread == nullptr && UISettings::values.hide_mouse) {
         mouse_hide_timer.stop();
         ShowMouseCursor();
         return;
@@ -2626,8 +2838,7 @@ void GMainWindow::HideMouseCursor() {
 
 void GMainWindow::ShowMouseCursor() {
     render_window->unsetCursor();
-    if (emu_thread != nullptr &&
-        (UISettings::values.hide_mouse || Settings::values.mouse_panning)) {
+    if (emu_thread != nullptr && UISettings::values.hide_mouse) {
         mouse_hide_timer.start();
     }
 }
@@ -3056,6 +3267,14 @@ int main(int argc, char* argv[]) {
     // the user folder in the Qt Frontend, we need to cd into that working directory
     const std::string bin_path = Common::FS::GetBundleDirectory() + DIR_SEP + "..";
     chdir(bin_path.c_str());
+#endif
+
+#ifdef __linux__
+    // Set the DISPLAY variable in order to open web browsers
+    // TODO (lat9nq): Find a better solution for AppImages to start external applications
+    if (QString::fromLocal8Bit(qgetenv("DISPLAY")).isEmpty()) {
+        qputenv("DISPLAY", ":0");
+    }
 #endif
 
     // Enables the core to make the qt created contexts current on std::threads

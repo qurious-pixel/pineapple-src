@@ -235,7 +235,7 @@ const std::array<UISettings::Shortcut, 17> Config::default_hotkeys{{
     {QStringLiteral("Restart Emulation"),        QStringLiteral("Main Window"), {QStringLiteral("F6"), Qt::WindowShortcut}},
     {QStringLiteral("Stop Emulation"),           QStringLiteral("Main Window"), {QStringLiteral("F5"), Qt::WindowShortcut}},
     {QStringLiteral("Toggle Filter Bar"),        QStringLiteral("Main Window"), {QStringLiteral("Ctrl+F"), Qt::WindowShortcut}},
-    {QStringLiteral("Toggle Mouse Panning"),     QStringLiteral("Main Window"), {QStringLiteral("F9"), Qt::ApplicationShortcut}},
+    {QStringLiteral("Toggle Mouse Panning"),     QStringLiteral("Main Window"), {QStringLiteral("Ctrl+F9"), Qt::ApplicationShortcut}},
     {QStringLiteral("Toggle Speed Limit"),       QStringLiteral("Main Window"), {QStringLiteral("Ctrl+Z"), Qt::ApplicationShortcut}},
     {QStringLiteral("Toggle Status Bar"),        QStringLiteral("Main Window"), {QStringLiteral("Ctrl+S"), Qt::WindowShortcut}},
 }};
@@ -508,7 +508,7 @@ void Config::ReadControlValues() {
 
     Settings::values.emulate_analog_keyboard =
         ReadSetting(QStringLiteral("emulate_analog_keyboard"), false).toBool();
-    Settings::values.mouse_panning = ReadSetting(QStringLiteral("mouse_panning"), false).toBool();
+    Settings::values.mouse_panning = false;
     Settings::values.mouse_panning_sensitivity =
         ReadSetting(QStringLiteral("mouse_panning_sensitivity"), 1).toFloat();
 
@@ -641,6 +641,7 @@ void Config::ReadDebuggingValues() {
         ReadSetting(QStringLiteral("disable_macro_jit"), false).toBool();
     Settings::values.extended_logging =
         ReadSetting(QStringLiteral("extended_logging"), false).toBool();
+    Settings::values.use_auto_stub = ReadSetting(QStringLiteral("use_auto_stub"), false).toBool();
 
     qt_config->endGroup();
 }
@@ -648,7 +649,7 @@ void Config::ReadDebuggingValues() {
 void Config::ReadServiceValues() {
     qt_config->beginGroup(QStringLiteral("Services"));
     Settings::values.bcat_backend =
-        ReadSetting(QStringLiteral("bcat_backend"), QStringLiteral("null"))
+        ReadSetting(QStringLiteral("bcat_backend"), QStringLiteral("none"))
             .toString()
             .toStdString();
     Settings::values.bcat_boxcat_local =
@@ -770,6 +771,13 @@ void Config::ReadRendererValues() {
     ReadSettingGlobal(Settings::values.renderer_backend, QStringLiteral("backend"), 0);
     ReadSettingGlobal(Settings::values.renderer_debug, QStringLiteral("debug"), false);
     ReadSettingGlobal(Settings::values.vulkan_device, QStringLiteral("vulkan_device"), 0);
+#ifdef _WIN32
+    ReadSettingGlobal(Settings::values.fullscreen_mode, QStringLiteral("fullscreen_mode"), 0);
+#else
+    // *nix platforms may have issues with the borderless windowed fullscreen mode.
+    // Default to exclusive fullscreen on these platforms for now.
+    ReadSettingGlobal(Settings::values.fullscreen_mode, QStringLiteral("fullscreen_mode"), 1);
+#endif
     ReadSettingGlobal(Settings::values.aspect_ratio, QStringLiteral("aspect_ratio"), 0);
     ReadSettingGlobal(Settings::values.max_anisotropy, QStringLiteral("max_anisotropy"), 0);
     ReadSettingGlobal(Settings::values.use_frame_limit, QStringLiteral("use_frame_limit"), true);
@@ -1182,7 +1190,6 @@ void Config::SaveControlValues() {
     WriteSetting(QStringLiteral("keyboard_enabled"), Settings::values.keyboard_enabled, false);
     WriteSetting(QStringLiteral("emulate_analog_keyboard"),
                  Settings::values.emulate_analog_keyboard, false);
-    WriteSetting(QStringLiteral("mouse_panning"), Settings::values.mouse_panning, false);
     WriteSetting(QStringLiteral("mouse_panning_sensitivity"),
                  Settings::values.mouse_panning_sensitivity, 1.0f);
     qt_config->endGroup();
@@ -1239,7 +1246,7 @@ void Config::SaveDebuggingValues() {
 void Config::SaveServiceValues() {
     qt_config->beginGroup(QStringLiteral("Services"));
     WriteSetting(QStringLiteral("bcat_backend"),
-                 QString::fromStdString(Settings::values.bcat_backend), QStringLiteral("null"));
+                 QString::fromStdString(Settings::values.bcat_backend), QStringLiteral("none"));
     WriteSetting(QStringLiteral("bcat_boxcat_local"), Settings::values.bcat_boxcat_local, false);
     qt_config->endGroup();
 }
@@ -1334,6 +1341,13 @@ void Config::SaveRendererValues() {
                        Settings::values.renderer_backend.UsingGlobal(), 0);
     WriteSetting(QStringLiteral("debug"), Settings::values.renderer_debug, false);
     WriteSettingGlobal(QStringLiteral("vulkan_device"), Settings::values.vulkan_device, 0);
+#ifdef _WIN32
+    WriteSettingGlobal(QStringLiteral("fullscreen_mode"), Settings::values.fullscreen_mode, 0);
+#else
+    // *nix platforms may have issues with the borderless windowed fullscreen mode.
+    // Default to exclusive fullscreen on these platforms for now.
+    WriteSettingGlobal(QStringLiteral("fullscreen_mode"), Settings::values.fullscreen_mode, 1);
+#endif
     WriteSettingGlobal(QStringLiteral("aspect_ratio"), Settings::values.aspect_ratio, 0);
     WriteSettingGlobal(QStringLiteral("max_anisotropy"), Settings::values.max_anisotropy, 0);
     WriteSettingGlobal(QStringLiteral("use_frame_limit"), Settings::values.use_frame_limit, true);

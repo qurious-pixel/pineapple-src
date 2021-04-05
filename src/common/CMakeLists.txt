@@ -109,6 +109,7 @@ add_library(common STATIC
     cityhash.h
     common_funcs.h
     common_paths.h
+    common_sizes.h
     common_types.h
     concepts.h
     div_ceil.h
@@ -167,6 +168,7 @@ add_library(common STATIC
     threadsafe_queue.h
     time_zone.cpp
     time_zone.h
+    tiny_mt.h
     tree.h
     uint128.h
     uuid.cpp

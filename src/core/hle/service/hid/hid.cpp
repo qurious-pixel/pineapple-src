@@ -15,9 +15,9 @@
 #include "core/hle/kernel/client_port.h"
 #include "core/hle/kernel/client_session.h"
 #include "core/hle/kernel/k_readable_event.h"
+#include "core/hle/kernel/k_shared_memory.h"
 #include "core/hle/kernel/k_writable_event.h"
 #include "core/hle/kernel/kernel.h"
-#include "core/hle/kernel/shared_memory.h"
 #include "core/hle/service/hid/errors.h"
 #include "core/hle/service/hid/hid.h"
 #include "core/hle/service/hid/irs.h"
@@ -1099,13 +1099,13 @@ void Hid::GetVibrationDeviceInfo(Kernel::HLERequestContext& ctx) {
     case Controller_NPad::NpadType::JoyconDual:
     case Controller_NPad::NpadType::JoyconLeft:
     case Controller_NPad::NpadType::JoyconRight:
+    default:
         vibration_device_info.type = VibrationDeviceType::LinearResonantActuator;
         break;
     case Controller_NPad::NpadType::GameCube:
         vibration_device_info.type = VibrationDeviceType::GcErm;
         break;
     case Controller_NPad::NpadType::Pokeball:
-    default:
         vibration_device_info.type = VibrationDeviceType::Unknown;
         break;
     }

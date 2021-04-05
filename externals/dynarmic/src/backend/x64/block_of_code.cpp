@@ -13,6 +13,7 @@
 #include "backend/x64/block_of_code.h"
 #include "backend/x64/perf_map.h"
 #include "common/assert.h"
+#include "common/bit_util.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -43,8 +44,6 @@ const std::array<Xbyak::Reg64, 6> BlockOfCode::ABI_PARAMS = {BlockOfCode::ABI_PA
 
 namespace {
 
-constexpr size_t TOTAL_CODE_SIZE = 128 * 1024 * 1024;
-constexpr size_t FAR_CODE_OFFSET = 100 * 1024 * 1024;
 constexpr size_t CONSTANT_POOL_SIZE = 2 * 1024 * 1024;
 
 class CustomXbyakAllocator : public Xbyak::Allocator {
@@ -74,10 +73,11 @@ void ProtectMemory(const void* base, size_t size, bool is_executable) {
 
 } // anonymous namespace
 
-BlockOfCode::BlockOfCode(RunCodeCallbacks cb, JitStateInfo jsi, std::function<void(BlockOfCode&)> rcp)
-        : Xbyak::CodeGenerator(TOTAL_CODE_SIZE, nullptr, &s_allocator)
+BlockOfCode::BlockOfCode(RunCodeCallbacks cb, JitStateInfo jsi, size_t total_code_size, size_t far_code_offset, std::function<void(BlockOfCode&)> rcp)
+        : Xbyak::CodeGenerator(total_code_size, nullptr, &s_allocator)
         , cb(std::move(cb))
         , jsi(jsi)
+        , far_code_offset(far_code_offset)
         , constant_pool(*this, CONSTANT_POOL_SIZE)
 {
     EnableWriting();
@@ -87,7 +87,7 @@ BlockOfCode::BlockOfCode(RunCodeCallbacks cb, JitStateInfo jsi, std::function<vo
 void BlockOfCode::PreludeComplete() {
     prelude_complete = true;
     near_code_begin = getCurr();
-    far_code_begin = getCurr() + FAR_CODE_OFFSET;
+    far_code_begin = getCurr() + far_code_offset;
     ClearCache();
     DisableWriting();
 }
@@ -114,22 +114,13 @@ void BlockOfCode::ClearCache() {
 
 size_t BlockOfCode::SpaceRemaining() const {
     ASSERT(prelude_complete);
-    // This function provides an underestimate of near-code-size but that's okay.
-    // (Why? The maximum size of near code should be measured from near_code_begin, not top_.)
-    // These are offsets from Xbyak::CodeArray::top_.
-    std::size_t far_code_offset, near_code_offset;
-    if (in_far_code) {
-        near_code_offset = static_cast<const u8*>(near_code_ptr) - getCode();
-        far_code_offset = getCurr() - getCode();
-    } else {
-        near_code_offset = getCurr() - getCode();
-        far_code_offset = static_cast<const u8*>(far_code_ptr) - getCode();
-    }
-    if (far_code_offset > TOTAL_CODE_SIZE)
+    const u8* current_near_ptr = in_far_code ? reinterpret_cast<const u8*>(near_code_ptr) : getCode<const u8*>();
+    const u8* current_far_ptr = in_far_code ? getCode<const u8*>() : reinterpret_cast<const u8*>(far_code_ptr);
+    if (current_near_ptr >= far_code_begin)
         return 0;
-    if (near_code_offset > FAR_CODE_OFFSET)
+    if (current_far_ptr >= &top_[maxSize_])
         return 0;
-    return std::min(TOTAL_CODE_SIZE - far_code_offset, FAR_CODE_OFFSET - near_code_offset);
+    return std::min(current_near_ptr - reinterpret_cast<const u8*>(far_code_begin), current_far_ptr - &top_[maxSize_]);
 }
 
 void BlockOfCode::RunCode(void* jit_state, CodePtr code_ptr) const {
@@ -364,7 +355,21 @@ bool BlockOfCode::HasBMI2() const {
 }
 
 bool BlockOfCode::HasFastBMI2() const {
-    return DoesCpuSupport(Xbyak::util::Cpu::tBMI2) && !DoesCpuSupport(Xbyak::util::Cpu::tAMD);
+    if (DoesCpuSupport(Xbyak::util::Cpu::tBMI2)) {
+        // BMI2 instructions such as pdep and pext have been very slow up until Zen 3.
+        // Check for Zen 3 or newer by its family (0x19).
+        // See also: https://en.wikichip.org/wiki/amd/cpuid
+        if (DoesCpuSupport(Xbyak::util::Cpu::tAMD)) {
+            std::array<u32, 4> data{};
+            cpu_info.getCpuid(1, data.data());
+            const u32 family_base     = Common::Bits< 8, 11>(data[0]);
+            const u32 family_extended = Common::Bits<20, 27>(data[0]);
+            const u32 family = family_base + family_extended;
+            return family >= 0x19;
+        }
+        return true;
+    }
+    return false;
 }
 
 bool BlockOfCode::HasFMA() const {

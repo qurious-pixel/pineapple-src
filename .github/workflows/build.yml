@@ -3,6 +3,7 @@ name: AppImage
 on:
   push:
     branches: [ minsizerel ]
+  workflow_dispatch:  
   
 jobs:
   appimage:

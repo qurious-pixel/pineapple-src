@@ -5,7 +5,6 @@
 #include <cinttypes>
 #include <cstring>
 #include "common/common_funcs.h"
-#include "common/file_util.h"
 #include "common/logging/log.h"
 #include "core/core.h"
 #include "core/file_sys/content_archive.h"
@@ -79,8 +78,8 @@ AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(
     : AppLoader(directory->GetFile("main")), dir(std::move(directory)),
       override_update(override_update) {}
 
-FileType AppLoader_DeconstructedRomDirectory::IdentifyType(const FileSys::VirtualFile& file) {
-    if (FileSys::IsDirectoryExeFS(file->GetContainingDirectory())) {
+FileType AppLoader_DeconstructedRomDirectory::IdentifyType(const FileSys::VirtualFile& dir_file) {
+    if (FileSys::IsDirectoryExeFS(dir_file->GetContainingDirectory())) {
         return FileType::DeconstructedRomDirectory;
     }
 

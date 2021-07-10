@@ -48,8 +48,9 @@ unset QTDIR
 mkdir $HOME/artifacts/
 mkdir -p /yuzu/artifacts/version
 # Version AppImage
-    mkdir -p squashfs-root/usr/optional/ ; mkdir -p squashfs-root/usr/optional/libstdc++/
+    mkdir -p squashfs-root/usr/optional/{libstdc++,libgcc_s}
     cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ./squashfs-root/usr/optional/libstdc++/
+    cp /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 ./squashfs-root/usr/optional/libgcc_s/
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun
     chmod a+x ./squashfs-root/AppRun
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/exec-x86_64.so -o ./squashfs-root/usr/optional/exec.so

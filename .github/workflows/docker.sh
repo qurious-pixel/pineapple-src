@@ -7,6 +7,7 @@ title="yuzu Early Access $ver"
 
 ln -s /home/yuzu/.conan /root
 
+pwd
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 

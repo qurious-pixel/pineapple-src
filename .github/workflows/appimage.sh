@@ -4,6 +4,8 @@ BUILDBIN=/yuzu/build/bin
 BINFILE=yuzu-x86_64.AppImage
 LOG_FILE=$HOME/curl.log
 BRANCH=`echo ${GITHUB_REF##*/}`
+export CC=${GCC_BINARY}
+export CXX=${GXX_BINARY}
 
 # QT 5.14.2
 # source /opt/qt514/bin/qt514-env.sh
@@ -46,8 +48,13 @@ unset QTDIR
 mkdir $HOME/artifacts/
 mkdir -p /yuzu/artifacts/version
 # Version AppImage
-curl -sL https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64 -o $HOME/squashfs-root/AppRun
-chmod a+x ./squashfs-root/AppRun
+    mkdir -p squashfs-root/usr/optional/ ; mkdir -p squashfs-root/usr/optional/libstdc++/
+    cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ./squashfs-root/usr/optional/libstdc++/
+    curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun
+    chmod a+x ./squashfs-root/AppRun
+    curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/exec-x86_64.so -o ./squashfs-root/usr/optional/exec.so
+    printf "#include <sstream>\n#include <exception>\n#include <memory_resource>\nint main(){auto x = std::stringbuf();x.get_allocator();std::make_exception_ptr(0);std::pmr::get_default_resource();}" \
+     | $CXX -x c++ -std=c++2a -o ./squashfs-root/usr/optional/checker -
 # /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -appimage -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH

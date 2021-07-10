@@ -7,19 +7,6 @@ title="yuzu Early Access $ver"
 
 ln -s /home/yuzu/.conan /root
 
-### update to gcc-11
-apt update
-apt install -y gcc-11 g++-11
-#apt purge gcc-10 g++-10
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 20
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 20 
-gcc --version 
-g++ --version 
-
-### fix qt on gcc-11
-sed -i 's/ThreadEngineStarter<void>(ThreadEngine<void> \*_threadEngine)/ThreadEngineStarter(ThreadEngine<void> \*_threadEngine)/' \
-	/opt/qt514/include/QtConcurrent/qtconcurrentthreadengine.h
-
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 

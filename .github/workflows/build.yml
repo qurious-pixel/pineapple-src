@@ -2,7 +2,7 @@ name: AppImage
 
 on:
   push:
-    branches: [ main ]
+    branches: [ gcc-11 ]
   
 jobs:
   appimage:

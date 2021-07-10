@@ -5,9 +5,9 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 ver=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17)
 title="yuzu Early Access $ver"
 
-#ln -s /home/yuzu/.conan /root
-cd /yuzu
-pwd
+### find libgcc_s.so.1
+find / -name "libgcc_s.so.1"
+
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 

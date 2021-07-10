@@ -58,7 +58,7 @@ export PATH=$(readlink -f /tmp/squashfs-root/usr/bin):$PATH
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
 # Continuous AppImage
-rm $HOME/squashfs-root/AppRun
+mv $HOME/squashfs-root/AppRun ./squashfs-root/AppRun-patched
 curl -sL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$BRANCH/.github/workflows/AppRun" -o $HOME/squashfs-root/AppRun
 chmod a+x ./squashfs-root/AppRun
 mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/

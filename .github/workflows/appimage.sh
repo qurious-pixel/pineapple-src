@@ -53,8 +53,8 @@ mkdir -p /yuzu/artifacts/version
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun
     chmod a+x ./squashfs-root/AppRun
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/exec-x86_64.so -o ./squashfs-root/usr/optional/exec.so
-    #printf "#include <sstream>\n#include <exception>\n#include <memory_resource>\nint main(){auto x = std::stringbuf();x.get_allocator();std::make_exception_ptr(0);std::pmr::get_default_resource();}" \
-    # | $CXX -x c++ -std=c++2a -o ./squashfs-root/usr/optional/checker -
+    printf "#include <exception>\n#include <memory_resource>\nint main(){std::make_exception_ptr(0);std::pmr::get_default_resource();}" | $CXX -x c++ -std=c++2a -o ./appdir/usr/optional/checker -
+
 # /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -appimage -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH

@@ -7,14 +7,6 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 export CC=${GCC_BINARY}
 export CXX=${GXX_BINARY}
 
-# QT 5.14.2
-# source /opt/qt514/bin/qt514-env.sh
-#QT_BASE_DIR=/opt/qt514
-#export QTDIR=$QT_BASE_DIR
-#export PATH=$QT_BASE_DIR/bin:$PATH
-#export LD_LIBRARY_PATH=$QT_BASE_DIR/lib/x86_64-linux-gnu:$QT_BASE_DIR/lib:$LD_LIBRARY_PATH
-#export PKG_CONFIG_PATH=$QT_BASE_DIR/lib/pkgconfig:$PKG_CONFIG_PATH
-
 cd /tmp
 	curl -sLO "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
 	curl -sLO "https://github.com/$GITHUB_REPOSITORY/raw/$BRANCH/.github/workflows/update.tar.gz"
@@ -27,7 +19,7 @@ cp -P "$BUILDBIN"/yuzu $HOME/squashfs-root/usr/bin/
 
 curl -sL https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$BRANCH/dist/yuzu.svg -o ./squashfs-root/yuzu.svg
 curl -sL https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$BRANCH/dist/yuzu.desktop -o ./squashfs-root/yuzu.desktop
-	sed -i -e 's#Exec=yuzu %f#Exec=env QT_QPA_PLATFORMTHEME=gtk3 yuzu %f#g' ./squashfs-root/yuzu.desktop
+	#sed -i -e 's#Exec=yuzu %f#Exec=env QT_QPA_PLATFORMTHEME=gtk3 yuzu %f#g' ./squashfs-root/yuzu.desktop
 curl -sL https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 -o ./squashfs-root/runtime
 mkdir -p squashfs-root/usr/share/applications && cp ./squashfs-root/yuzu.desktop ./squashfs-root/usr/share/applications
 mkdir -p squashfs-root/usr/share/icons && cp ./squashfs-root/yuzu.svg ./squashfs-root/usr/share/icons
@@ -59,7 +51,7 @@ mkdir -p /yuzu/artifacts/version
 # /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -appimage -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin):$PATH
-export LD_LIBRARY_PATH="$(readlink -f ./squashfs-root/usr/lib):$(readlink -f ./squashfs-root/usr/optional):${LD_LIBRARY_PATH}"
+#export LD_LIBRARY_PATH="$(readlink -f ./squashfs-root/usr/lib):$(readlink -f ./squashfs-root/usr/optional):${LD_LIBRARY_PATH}"
 	mkdir $HOME/squashfs-root/usr/plugins/platformthemes/
 	cp /opt/qt515/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins/platformthemes/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root

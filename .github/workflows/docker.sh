@@ -16,6 +16,9 @@ update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 20
 gcc --version 
 g++ --version 
 
+### fix qt on gcc-11
+sed -i 's/ThreadEngineStarter<void>(ThreadEngine<void> \*_threadEngine)/ThreadEngineStarter(ThreadEngine<void> \*_threadEngine)/' \
+	/opt/qt514/include/QtConcurrent/qtconcurrentthreadengine.h
 
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done

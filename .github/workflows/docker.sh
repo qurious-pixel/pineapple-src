@@ -8,9 +8,9 @@ title="yuzu Early Access $ver"
 ln -s /home/yuzu/.conan /root
 
 ### update to gcc-11
-sudo apt update
-sudo apt install gcc-11 g++-11
-sudo apt purge gcc-10 g++-10
+apt update
+apt install gcc-11 g++-11
+apt purge gcc-10 g++-10
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 10
 update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 10 
 gcc --version 
